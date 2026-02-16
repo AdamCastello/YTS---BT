@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BT - Play · YouTube Player</title>
+    <link rel="icon" type="image/x-icon" href="/icon.webp" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f1e;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #eef4ff;
+        }
+
+        /* MODE UTAMA */
+        .main-mode {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 30px;
+            overflow-y: auto;
+        }
+
+        /* MODE PLAYER */
+        .player-mode {
+            height: 100vh;
+            display: none;
+            flex-direction: column;
+            background: #070b16;
+            position: relative;
+        }
+
+        .player-mode.active {
+            display: flex;
+        }
+
+        .player-header {
+            padding: 16px 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #0c1322;
+            border-bottom: 1px solid #1f2f4a;
+        }
+
+        .back-btn {
+            background: #7ec8ff20;
+            border: 1px solid #7ec8ff60;
+            color: #c1e2ff;
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .back-btn:hover {
+            background: #7ec8ff;
+            color: #0a0f1e;
+            border-color: #7ec8ff;
+        }
+
+        .player-header h2 {
+            color: #b6ceff;
+            font-weight: 400;
+            font-size: 1.2rem;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        /* konten player */
+        .player-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 30px;
+        }
+
+        .video-card {
+            width: 100%;
+            max-width: 1000px;
+            background: #111b2e;
+            border-radius: 36px;
+            border: 1px solid #2a3d62;
+            overflow: hidden;
+            box-shadow: 0 30px 50px -20px #00000080;
+        }
+
+        /* YouTube iframe */
+        #youtubePlayer {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            display: block;
+            background: #000;
+        }
+
+        .video-info-bar {
+            padding: 20px 24px;
+            background: #0e172b;
+            border-top: 1px solid #263a5a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .video-info-bar .vid-title {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: white;
+            max-width: 100%;
+            word-break: break-word;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        /* Tombol-tombol aksi */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1.5px solid #7ec8ff;
+            color: #7ec8ff;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.12s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .action-btn:hover {
+            background: #7ec8ff;
+            color: #0a0f1e;
+        }
+
+        .action-btn.download-btn {
+            border-color: #a78bfa;
+            color: #a78bfa;
+        }
+
+        .action-btn.download-btn:hover {
+            background: #a78bfa;
+            color: #0a0f1e;
+        }
+
+        /* Modal download */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #111b2e;
+            border: 2px solid #2a3d62;
+            border-radius: 40px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 30px 60px -20px #000;
+        }
+
+        .modal-content h3 {
+            color: #eef4ff;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .modal-content p {
+            color: #8fa7d1;
+            margin-bottom: 25px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .download-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .download-option {
+            flex: 1;
+            background: #0e172b;
+            border: 1px solid #2a3d62;
+            border-radius: 30px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .download-option:hover {
+            border-color: #7ec8ff;
+            background: #1a2742;
+        }
+
+        .download-option .format {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #7ec8ff;
+            margin-bottom: 10px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .download-option .desc {
+            color: #a5bbdf;
+            font-size: 0.9rem;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .close-modal {
+            background: transparent;
+            border: 1px solid #4d6085;
+            color: #8fa7d1;
+            padding: 12px 24px;
+            border-radius: 40px;
+            width: 100%;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.15s;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .close-modal:hover {
+            background: #1f2f4a;
+            color: white;
+        }
+
+        /* notifikasi copy */
+        .copy-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #7ec8ff;
+            color: #0a0f1e;
+            padding: 12px 30px;
+            border-radius: 60px;
+            font-weight: 600;
+            z-index: 2000;
+            display: none;
+            animation: slideUp 0.3s ease;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        /* BRAND */
+        .brand {
+            margin-bottom: 25px;
+        }
+
+        .brand h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(120deg, #e0f2fe, #a5d8ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .brand p {
+            color: #9aa8c9;
+            border-left: 3px solid #7ec8ff;
+            padding-left: 16px;
+            margin-top: 6px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        /* SEARCH */
+        .search-section {
+            margin-bottom: 30px;
+        }
+
+        .search-wrapper {
+            display: flex;
+            align-items: center;
+            background: #101827;
+            border-radius: 60px;
+            padding: 4px 4px 4px 24px;
+            border: 1px solid #2c3a5a;
+        }
+
+        .search-wrapper:focus-within {
+            border-color: #7ec8ff;
+            box-shadow: 0 0 0 4px rgba(126, 200, 255, 0.2);
+        }
+
+        .search-wrapper input {
+            background: transparent;
+            border: none;
+            padding: 18px 0;
+            font-size: 1.2rem;
+            color: #f0f4ff;
+            flex: 1;
+            outline: none;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .search-wrapper input::placeholder {
+            color: #4d6085;
+        }
+
+        .search-wrapper button {
+            background: #7ec8ff;
+            border: none;
+            color: #0a0f1e;
+            font-weight: 600;
+            padding: 12px 32px;
+            border-radius: 60px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .search-wrapper button:hover {
+            background: #9fd3ff;
+            transform: scale(1.02);
+        }
+
+        /* GRID 3 KOLOM */
+        .result-wrapper {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            color: #a5bbdf;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            overflow-y: auto;
+            padding-right: 8px;
+            padding-bottom: 10px;
+        }
+
+        .video-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .video-grid::-webkit-scrollbar-track {
+            background: #121d30;
+            border-radius: 20px;
+        }
+
+        .video-grid::-webkit-scrollbar-thumb {
+            background: #33527a;
+            border-radius: 20px;
+        }
+
+        /* card video */
+        .video-card-item {
+            background: #111b2e;
+            border-radius: 28px;
+            border: 1px solid #293856;
+            overflow: hidden;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            height: 100%;
+        }
+
+        .video-card-item:hover {
+            border-color: #7ec8ff;
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -10px #000, 0 0 0 1px #7ec8ff;
+        }
+
+        .thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            background: #1e2f4a;
+            border-bottom: 1px solid #2f4268;
+        }
+
+        .card-content {
+            padding: 14px 16px 18px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            line-height: 1.4;
+            margin-bottom: 10px;
+            color: #f0f6ff;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 44px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            font-size: 0.85rem;
+            color: #8fa7d1;
+            margin-bottom: 16px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .card-channel {
+            background: #1a2742;
+            padding: 4px 12px;
+            border-radius: 30px;
+            border: 1px solid #354f78;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .card-duration {
+            background: #1a2742;
+            padding: 4px 12px;
+            border-radius: 30px;
+            border: 1px solid #354f78;
+        }
+
+        .watch-btn {
+            background: transparent;
+            border: 1.5px solid #7ec8ff;
+            color: #7ec8ff;
+            padding: 10px 0;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: auto;
+            transition: 0.12s;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .watch-btn:hover {
+            background: #7ec8ff;
+            color: #0a0f1e;
+        }
+
+        .message-area {
+            grid-column: span 3;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 40px;
+            padding: 50px 24px;
+            text-align: center;
+            color: #7f92bb;
+            border: 1px dashed #2f3e62;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .message-area.welcome {
+            background: rgba(126, 200, 255, 0.05);
+            border-color: #7ec8ff40;
+        }
+
+        .welcome-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        /* FOOTER BARU */
+        .footer-info {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid #202d48;
+            padding-top: 18px;
+        }
+
+        .credit-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #7b8fb3;
+            font-size: 1rem;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .credit-line .made-with {
+            background: #1a253c;
+            border-radius: 40px;
+            padding: 6px 18px;
+            border: 1px solid #384f78;
+        }
+
+        .credit-line .year {
+            background: #1a253c;
+            border-radius: 40px;
+            padding: 6px 18px;
+            border: 1px solid #384f78;
+        }
+
+        .floater {
+            text-align: center;
+            color: #8fa7d1;
+            font-size: 0.95rem;
+            background: rgba(126, 200, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 60px;
+            border: 1px dashed #7ec8ff60;
+            letter-spacing: 1px;
+            font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+        }
+
+        .floater span {
+            color: #7ec8ff;
+            font-weight: 600;
+        }
+
+        .floater i {
+            font-style: normal;
+            color: #a78bfa;
+        }
+
+        /* Hati symbol */
+        .heart {
+            color: #ff7b9c;
+            display: inline-block;
+            animation: heartbeat 1.5s ease infinite;
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- HALAMAN UTAMA -->
+    <div id="mainPage" class="main-mode">
+        <div class="brand">
+            <h1>BT - Play</h1>
+            <p>🎬 Cari & putar video YouTube</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-wrapper">
+                <span style="color:#7b8db3; font-size:1.4rem;">🔍</span>
+                <input type="text" id="searchInput" placeholder="Cari video..." value="">
+                <button id="searchBtn">
+                    <span>Cari</span>
+                    <span>⏎</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="result-wrapper">
+            <div class="stats-bar">
+                <span id="resultCount">📋 Selamat datang</span>
+                <span style="background:#1d2b44; padding:4px 14px; border-radius:30px;">YouTube Player</span>
+            </div>
+            <div id="videoGridContainer" class="video-grid">
+                <!-- Pesan selamat datang -->
+                <div class="message-area welcome">
+                    <div class="welcome-icon">👋</div>
+                    <div style="font-size: 1.3rem; margin-bottom: 10px;">Selamat Datang di BT - Play!</div>
+                    <div style="color: #9aafd1;">Ketik kata kunci di atas dan tekan Cari atau Enter untuk mulai mencari video.</div>
+                    <div style="margin-top: 20px; font-size: 0.9rem; color: #7ec8ff;">✨ Contoh: music, vlog, tutorial, dll.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER BARU -->
+        <div class="footer-info">
+            <div class="credit-line">
+                <span class="made-with">Dibuat dengan <span class="heart">❤</span>ㅤ•ㅤDimzNotDev</span>
+                <span class="year">Estㅤ•ㅤ2K25 - 2K26</span>
+            </div>
+            <div class="floater">
+                <span>©DimzNotDev</span> × <i>HeyTysh!</i>
+            </div>
+        </div>
+    </div>
+
+    <!-- HALAMAN PLAYER -->
+    <div id="playerPage" class="player-mode">
+        <div class="player-header">
+            <div class="back-btn" id="backToHomeBtn">
+                <span style="font-size:1.3rem;">←</span> Kembali
+            </div>
+            <h2 id="playerHeaderTitle">BT - Play · YouTube</h2>
+        </div>
+        <div class="player-content">
+            <div class="video-card">
+                <!-- YouTube iframe -->
+                <iframe id="youtubePlayer" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+                
+                <div class="video-info-bar">
+                    <span class="vid-title" id="currentVideoTitle">Judul Video</span>
+                    <div class="action-buttons">
+                        <button class="action-btn" id="copyLinkBtn">
+                            <span>📋</span> Salin Link YouTube
+                        </button>
+                        <button class="action-btn download-btn" id="downloadBtn">
+                            <span>⬇️</span> Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DOWNLOAD -->
+    <div class="modal-overlay" id="downloadModal">
+        <div class="modal-content">
+            <h3>⬇️ Download Video</h3>
+            <p id="modalVideoTitle">Pilih format download</p>
+            
+            <div class="download-options">
+                <!-- MP3 Option -->
+                <div class="download-option" id="downloadMp3">
+                    <div class="format">MP3</div>
+                    <div class="desc">Audio only</div>
+                </div>
+                
+                <!-- MP4 Option -->
+                <div class="download-option" id="downloadMp4">
+                    <div class="format">MP4</div>
+                    <div class="desc">Video + Audio</div>
+                </div>
+            </div>
+            
+            <button class="close-modal" id="closeModalBtn">Tutup</button>
+        </div>
+    </div>
+
+    <!-- NOTIFIKASI COPY -->
+    <div class="copy-notification" id="copyNotification">
+        Link YouTube berhasil disalin!
+    </div>
+
+    <script>
+        (function() {
+            const SEARCH_API = 'https://api.deline.web.id/search/youtube?q=';
+
+            // Elemen DOM
+            const mainPage = document.getElementById('mainPage');
+            const playerPage = document.getElementById('playerPage');
+            const backBtn = document.getElementById('backToHomeBtn');
+            const youtubePlayer = document.getElementById('youtubePlayer');
+            const currentVideoTitle = document.getElementById('currentVideoTitle');
+            const playerHeaderTitle = document.getElementById('playerHeaderTitle');
+            const copyLinkBtn = document.getElementById('copyLinkBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            // Modal elements
+            const downloadModal = document.getElementById('downloadModal');
+            const modalVideoTitle = document.getElementById('modalVideoTitle');
+            const downloadMp3 = document.getElementById('downloadMp3');
+            const downloadMp4 = document.getElementById('downloadMp4');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+
+            // Notifikasi
+            const copyNotification = document.getElementById('copyNotification');
+
+            // Search elements
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const videoGridContainer = document.getElementById('videoGridContainer');
+            const resultCountSpan = document.getElementById('resultCount');
+
+            // State
+            let currentVideoUrl = '';
+            let currentVideoId = '';
+            let currentVideoTitleText = '';
+
+            // === TEMPAT UNTUK LINK DOWNLOAD ===
+            // GANTI LINK BERIKUT DENGAN WEBSITE DOWNLOAD YANG ANDA INGIN GUNAKAN
+            const DOWNLOAD_SITES = {
+                mp3: 'https://ytdl-mp3.vercel.app/?url=', // Ganti dengan link website MP3 Anda
+                mp4: 'https://ytdl-mp4.vercel.app/?url=' // Ganti dengan link website MP4 Anda
+            };
+
+            // Helper: extract video ID dari link YouTube
+            function extractVideoId(url) {
+                if (!url) return null;
+                const patterns = [
+                    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?#]+)/,
+                    /youtube\.com\/embed\/([^/?]+)/
+                ];
+                for (let pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match) return match[1];
+                }
+                return null;
+            }
+
+            // Fungsi untuk memutar video
+            function playVideo(youtubeUrl, title) {
+                const videoId = extractVideoId(youtubeUrl);
+                if (!videoId) {
+                    alert('Link YouTube tidak valid');
+                    return;
+                }
+
+                // Simpan state
+                currentVideoUrl = youtubeUrl;
+                currentVideoId = videoId;
+                currentVideoTitleText = title || 'Video YouTube';
+                
+                // Set iframe src dengan embed YouTube
+                youtubePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                
+                // Update judul
+                currentVideoTitle.textContent = currentVideoTitleText;
+                playerHeaderTitle.textContent = `BT · ${currentVideoTitleText.substring(0, 50)}`;
+                
+                // Tampilkan halaman player
+                showPlayerPage();
+            }
+
+            // Fungsi copy link
+            function copyLink() {
+                navigator.clipboard.writeText(currentVideoUrl).then(() => {
+                    copyNotification.style.display = 'block';
+                    setTimeout(() => {
+                        copyNotification.style.display = 'none';
+                    }, 2000);
+                }).catch(err => {
+                    alert('Gagal menyalin link: ' + err);
+                });
+            }
+
+            // Fungsi untuk membuka modal download
+            function openDownloadModal() {
+                modalVideoTitle.textContent = currentVideoTitleText;
+                downloadModal.classList.add('active');
+            }
+
+            // Fungsi untuk menutup modal
+            function closeDownloadModal() {
+                downloadModal.classList.remove('active');
+            }
+
+            // === FUNGSI DOWNLOAD ===
+            function downloadMP3() {
+                // Format: "mp3 :" - ganti sesuai kebutuhan
+                const downloadUrl = DOWNLOAD_SITES.mp3 + encodeURIComponent(currentVideoUrl);
+                window.open(downloadUrl, '_blank');
+                closeDownloadModal();
+            }
+
+            function downloadMP4() {
+                // Format: "mp4 :" - ganti sesuai kebutuhan
+                const downloadUrl = DOWNLOAD_SITES.mp4 + encodeURIComponent(currentVideoUrl);
+                window.open(downloadUrl, '_blank');
+                closeDownloadModal();
+            }
+
+            // Navigasi
+            function showMainPage() {
+                mainPage.style.display = 'flex';
+                playerPage.classList.remove('active');
+                youtubePlayer.src = ''; // Hentikan video
+            }
+
+            function showPlayerPage() {
+                mainPage.style.display = 'none';
+                playerPage.classList.add('active');
+            }
+
+            // Event listeners
+            backBtn.addEventListener('click', showMainPage);
+            copyLinkBtn.addEventListener('click', copyLink);
+            downloadBtn.addEventListener('click', openDownloadModal);
+            
+            // Modal events
+            closeModalBtn.addEventListener('click', closeDownloadModal);
+            downloadMp3.addEventListener('click', downloadMP3);
+            downloadMp4.addEventListener('click', downloadMP4);
+            
+            // Klik di luar modal untuk menutup
+            downloadModal.addEventListener('click', (e) => {
+                if (e.target === downloadModal) {
+                    closeDownloadModal();
+                }
+            });
+
+            // Render grid 3 kolom
+            function renderVideoGrid(videos) {
+                if (!videos || videos.length === 0) {
+                    videoGridContainer.innerHTML = `<div class="message-area">😕 Tidak ada video. Coba kata kunci lain.</div>`;
+                    resultCountSpan.textContent = '📋 0 video';
+                    return;
+                }
+
+                let html = '';
+                videos.slice(0, 30).forEach(v => {
+                    const title = v.title || 'Judul tidak tersedia';
+                    const channel = v.channel || 'Unknown';
+                    const duration = v.duration || '0:00';
+                    const thumb = v.imageUrl || 'https://via.placeholder.com/320x180?text=BT-Play';
+                    const link = v.link || '#';
+
+                    html += `
+                        <div class="video-card-item" data-video-link="${link}" data-video-title="${title.replace(/"/g, '&quot;')}">
+                            <img class="thumbnail" src="${thumb}" alt="thumb" loading="lazy" onerror="this.onerror=null; this.src='https://via.placeholder.com/320x180?text=Error'">
+                            <div class="card-content">
+                                <div class="card-title">${title}</div>
+                                <div class="card-meta">
+                                    <span class="card-channel">📺 ${channel}</span>
+                                    <span class="card-duration">⏱️ ${duration}</span>
+                                </div>
+                                <div class="watch-btn">▶ Putar Video</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                videoGridContainer.innerHTML = html;
+                resultCountSpan.textContent = `📋 ${videos.length} video ditemukan`;
+
+                // Event listener untuk setiap card
+                document.querySelectorAll('.video-card-item').forEach(card => {
+                    const link = card.dataset.videoLink;
+                    const title = card.dataset.videoTitle;
+
+                    const playHandler = (e) => {
+                        e.stopPropagation();
+                        if (link && link !== '#') {
+                            playVideo(link, title);
+                        }
+                    };
+
+                    card.addEventListener('click', playHandler);
+                    card.querySelector('.watch-btn').addEventListener('click', playHandler);
+                });
+            }
+
+            // Fungsi pencarian
+            async function performSearch(query) {
+                if (!query.trim()) {
+                    // Kalau query kosong, tampilkan pesan selamat datang
+                    videoGridContainer.innerHTML = `
+                        <div class="message-area welcome">
+                            <div class="welcome-icon">👋</div>
+                            <div style="font-size: 1.3rem; margin-bottom: 10px;">Selamat Datang di BT - Play!</div>
+                            <div style="color: #9aafd1;">Ketik kata kunci di atas dan tekan Cari atau Enter untuk mulai mencari video.</div>
+                            <div style="margin-top: 20px; font-size: 0.9rem; color: #7ec8ff;">✨ Contoh: music, vlog, tutorial, dll.</div>
+                        </div>
+                    `;
+                    resultCountSpan.textContent = '📋 Selamat datang';
+                    return;
+                }
+
+                // Tampilkan loading
+                videoGridContainer.innerHTML = `<div class="message-area">⏳ Mencari video "${query}"...</div>`;
+
+                try {
+                    const url = `${SEARCH_API}${encodeURIComponent(query)}`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (data.status === true && Array.isArray(data.result)) {
+                        if (data.result.length > 0) {
+                            renderVideoGrid(data.result);
+                        } else {
+                            videoGridContainer.innerHTML = `<div class="message-area">😕 Tidak ada video untuk "${query}". Coba kata kunci lain.</div>`;
+                            resultCountSpan.textContent = '📋 0 video';
+                        }
+                    } else {
+                        throw new Error('Format API tidak sesuai');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    videoGridContainer.innerHTML = `<div class="message-area">❌ Gagal memuat: ${err.message}</div>`;
+                    resultCountSpan.textContent = '📋 error';
+                }
+            }
+
+            // Event listeners search
+            searchBtn.addEventListener('click', () => performSearch(searchInput.value));
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch(searchInput.value);
+                }
+            });
+
+            // Tidak ada pencarian otomatis
+            console.log('BT - Play siap digunakan');
+        })();
+    </script>
+</body>
+</html>
